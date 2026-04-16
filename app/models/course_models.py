@@ -17,7 +17,7 @@ class Semester(Base):
         UniqueConstraint("term", "year", name="unique_term_year"),
     )
 
-    sections = relationship("Section", backref="semester")
+    sections = relationship("Section", back_populates="semester")
 
 
 class Course(Base):
@@ -32,7 +32,7 @@ class Course(Base):
         UniqueConstraint("subject", "code", name="unique_subject_code"),
     )
 
-    sections = relationship("Section", backref="course")
+    sections = relationship("Section", back_populates="course")
 
 
 class Section(Base):
@@ -43,8 +43,8 @@ class Section(Base):
     semester_id = Column(Integer, ForeignKey('semesters.id'), nullable=False)
 
     meetings = relationship("Meeting", back_populates="section", cascade="all, delete-orphan", passive_deletes=True)
-    course = relationship("Course", back_populates="sections")
     semester = relationship("Semester", back_populates="sections")
+    course = relationship("Course", back_populates="sections")
 
 
 class Meeting(Base):
@@ -68,7 +68,7 @@ class MeetingDay(Base):
     meeting_id = Column(Integer, ForeignKey('meetings.id', ondelete="CASCADE"), primary_key=True)
     day = Column(CHAR(1), primary_key=True)
 
-    __table_args__ = (CheckConstraint("day IN ('M','T','W','R','F','S','U')", name='valid_day_check'))
+    __table_args__ = (CheckConstraint("day IN ('M','T','W','R','F','S','U')", name='valid_day_check'),)
 
     meeting = relationship("Meeting", back_populates="meeting_days", passive_deletes=True)
 
