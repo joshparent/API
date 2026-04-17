@@ -30,30 +30,56 @@ def get_subjects(db: Session = Depends(get_db)):
     return [s[0] for s in subjects]
 
 
-# Retrieves all courses that match an id or title query
-@app.get("/courses/search", response_model=list[schemas.SectionRead])
-def search_courses(
-        query: str,
-        db: Session = Depends(get_db)
-):
+# Retrieves all semesters
+@app.get("/semesters", response_model=list[schemas.SemesterRead])
+def get_semesters(db: Session = Depends(get_db)):
+    return db.query(models.Semester).all()
+
+
+# Retrieves all courses for a specific semester
+@app.get("/semesters/{semester_id}/courses", response_model=list[schemas.CourseRead])
+def get_courses_by_semester(semester_id: int, db: Session = Depends(get_db)):
+    courses = (
+        db.query(models.Course)
+        .join(models.Section)
+        .filter(models.Section.semester_id == semester_id)
+        .distinct()
+        .all()
+    )
+
+    return courses
+
+
+# Retrieves all subjects for a specific semester
+@app.get("/semesters/{semester_id}/subjects", response_model=list[str])
+def get_subjects_by_semester(semester_id: int, db: Session = Depends(get_db)):
+    subjects = (
+        db.query(distinct(models.Course.subject))
+        .join(models.Section, models.Section.course_id == models.Course.id)
+        .filter(models.Section.semester_id == semester_id)
+        .all()
+    )
+
+    return [s[0] for s in subjects]
+
+
+# Retrieves all courses that match a crn or title query for a given semester
+@app.get("/semesters/{semester_id}/courses/search", response_model=list[schemas.SectionRead])
+def search_courses(semester_id: int, query: str, db: Session = Depends(get_db)):
+    query = query.strip()
+    filters = [models.Course.title.ilike(f"%{query}%")]
+
+    if query.isdigit():
+        filters.append(models.Course.id == int(query))
+
     results = (
         db.query(models.Section)
         .join(models.Course)
-        .options(
-            joinedload(models.Section.course),
-            joinedload(models.Section.semester),
-            joinedload(models.Section.meetings)
-            .joinedload(models.Meeting.instructors)
-            .joinedload(models.MeetingInstructor.instructor),
-            joinedload(models.Section.meetings)
-            .joinedload(models.Meeting.meeting_days),
-        )
-        .filter(
-            or_(
-                models.Course.title.ilike(f"%{query.rstrip()}%"),
-                models.Section.crn == query.rstrip() if query.rstrip().isdigit() else False
-            )
-        )
+        .options(joinedload(models.Section.course),
+                 joinedload(models.Section.semester),
+                 joinedload(models.Section.meetings).joinedload(models.Meeting.instructors).joinedload(models.MeetingInstructor.instructor),
+                 joinedload(models.Section.meetings).joinedload(models.Meeting.meeting_days), )
+        .filter(models.Section.semester_id == semester_id, or_(*filters))
         .all()
     )
 
