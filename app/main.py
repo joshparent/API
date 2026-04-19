@@ -4,11 +4,22 @@ from . import schemas
 from .models import course_models as models
 from .database import get_db, engine
 from sqlalchemy import or_, distinct
+from fastapi.middleware.cors import CORSMiddleware
 
 # Create database tables
 models.Base.metadata.create_all(bind=engine)
 
+# Initialize API
 app = FastAPI()
+
+# App middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # Route to test connections
@@ -77,7 +88,8 @@ def search_courses(semester_id: int, query: str, db: Session = Depends(get_db)):
         .join(models.Course)
         .options(joinedload(models.Section.course),
                  joinedload(models.Section.semester),
-                 joinedload(models.Section.meetings).joinedload(models.Meeting.instructors).joinedload(models.MeetingInstructor.instructor),
+                 joinedload(models.Section.meetings).joinedload(models.Meeting.instructors).joinedload(
+                     models.MeetingInstructor.instructor),
                  joinedload(models.Section.meetings).joinedload(models.Meeting.meeting_days), )
         .filter(models.Section.semester_id == semester_id, or_(*filters))
         .all()
