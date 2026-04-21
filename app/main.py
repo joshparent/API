@@ -61,6 +61,23 @@ def get_courses_by_semester(semester_id: int, db: Session = Depends(get_db)):
     return courses
 
 
+# Retrieves all courses for a specific semester with that have a specific subject
+@app.get("/semesters/{semester_id}/courses/by-subject", response_model=list[schemas.CourseRead])
+def get_courses_by_semester_and_subject(semester_id: int, subject: str, db: Session = Depends(get_db)):
+    courses = (
+        db.query(models.Course)
+        .join(models.Section)
+        .filter(
+            models.Section.semester_id == semester_id,
+            models.Course.subject == subject
+        )
+        .order_by(models.Course.code.asc())
+        .distinct()
+        .all()
+    )
+    return courses
+
+
 # Retrieves all subjects for a specific semester
 @app.get("/semesters/{semester_id}/subjects", response_model=list[str])
 def get_subjects_by_semester(semester_id: int, db: Session = Depends(get_db)):
