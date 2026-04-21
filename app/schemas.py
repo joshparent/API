@@ -46,8 +46,8 @@ class MeetingInstructorRead(BaseModel):
 
 
 class MeetingBase(BaseModel):
-    start_time: time
-    end_time: time
+    start_time: Optional[time] = None
+    end_time: Optional[time] = None
 
 
 class MeetingCreate(MeetingBase):
@@ -76,6 +76,7 @@ class CourseCreate(CourseBase):
 
 class CourseRead(CourseBase):
     id: int
+    sections: List["SectionRead"] = []
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -110,8 +111,6 @@ class SectionCreate(SectionBase):
 
 class SectionRead(BaseModel):
     crn: int
-    course: CourseRead
-    semester: SemesterRead
     meetings: List[MeetingRead] = []
 
     model_config = ConfigDict(from_attributes=True)

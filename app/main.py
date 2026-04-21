@@ -5,6 +5,7 @@ from .models import course_models as models
 from .database import get_db, engine
 from sqlalchemy import or_, distinct
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import contains_eager
 
 # Create database tables
 models.Base.metadata.create_all(bind=engine)
@@ -62,19 +63,32 @@ def get_courses_by_semester(semester_id: int, db: Session = Depends(get_db)):
 
 
 # Retrieves all courses for a specific semester with that have a specific subject
+from sqlalchemy.orm import joinedload
+
+
 @app.get("/semesters/{semester_id}/courses/by-subject", response_model=list[schemas.CourseRead])
-def get_courses_by_semester_and_subject(semester_id: int, subject: str, db: Session = Depends(get_db)):
+def get_courses_by_semester_and_subject(semester_id: int,subject: str,db: Session = Depends(get_db)):
     courses = (
         db.query(models.Course)
-        .join(models.Section)
+        .join(models.Course.sections)
+        .options(
+            contains_eager(models.Course.sections)
+            .joinedload(models.Section.meetings)
+            .joinedload(models.Meeting.meeting_days),
+
+            contains_eager(models.Course.sections)
+            .joinedload(models.Section.meetings)
+            .joinedload(models.Meeting.instructors)
+            .joinedload(models.MeetingInstructor.instructor),
+        )
         .filter(
             models.Section.semester_id == semester_id,
             models.Course.subject == subject
         )
         .order_by(models.Course.code.asc())
-        .distinct()
         .all()
     )
+
     return courses
 
 
@@ -113,3 +127,4 @@ def search_courses(semester_id: int, query: str, db: Session = Depends(get_db)):
     )
 
     return results
+
